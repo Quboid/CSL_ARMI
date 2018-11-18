@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSL_MIAlign", "CSL_MIAlign\CSL_MIAlign.csproj", "{9F8059A1-5D61-4FC5-A98B-7E815AE411D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSL_ARMI", "CSL_ARMI\CSL_ARMI.csproj", "{9F8059A1-5D61-4FC5-A98B-7E815AE411D5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
