@@ -11,9 +11,6 @@ namespace CSL_ARMI
     {
         public const MoveItTool.ToolState TOOL_KEY = (MoveItTool.ToolState)6;
         public const int TOOL_ACTION_DO = 1;
-        private const float XFACTOR = 0.263671875f;
-        private const float YFACTOR = 0.015625f;
-        private const float ZFACTOR = 0.263671875f;
 
         public string Name => "Align Rotation for Move It";
         public string Description => "Press Alt+A in Move It and click on a building/prop/decal to align rotation";
