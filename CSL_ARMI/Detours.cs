@@ -1,8 +1,9 @@
 ﻿using ColossalFramework;
 using Harmony;
 using MoveIt;
-using UnityEngine;
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace CSL_ARMI
 {
@@ -40,7 +41,6 @@ namespace CSL_ARMI
                 if (___m_hoverInstance is MoveableBuilding mb)
                 {
                     Building building = Singleton<BuildingManager>.instance.m_buildings.m_buffer[mb.id.Building];
-
                     angle = building.m_angle;
                 }
                 else if (___m_hoverInstance is MoveableProp mp)
@@ -80,13 +80,150 @@ namespace CSL_ARMI
     }
 
 
-    [HarmonyPatch(typeof(AlignHeightAction))]
-    [HarmonyPatch("Undo")]
-    class AHA_Undo
+    [HarmonyPatch(typeof(MoveableBuilding))]
+    [HarmonyPatch("Transform")]
+    class MB_Transform
     {
-        public static void Prefix(MoveItTool __instance)
+        public static void Postfix(InstanceState instanceState, ref Matrix4x4 matrix4x, float deltaAngle, Vector3 center, bool followTerrain)
         {
-            Debug.Log($"AHA Undo");
+            BuildingState state = instanceState as BuildingState;
+            Vector3 newPosition = matrix4x.MultiplyPoint(state.position - center);
+
+            //Debug.Log($"MB Transform");
+            if (state.subStates != null)
+            {
+                //Debug.Log($"MB subState not null");
+                foreach (InstanceState subState in state.subStates)
+                {
+                    //Debug.Log($"MB subState");
+                    if (subState is BuildingState bs)
+                    {
+                        //Debug.Log($"MB subState is BuildingState");
+                        if (bs.subStates != null)
+                        {
+                            //Debug.Log($"MB subSubStates not null");
+                            foreach (InstanceState subSubState in bs.subStates)
+                            {
+                                //Debug.Log($"MB subSubState");
+                                Vector3 subPosition = subSubState.position - center;
+                                subPosition = matrix4x.MultiplyPoint(subPosition);
+                                subPosition.y = subSubState.position.y - state.position.y + newPosition.y;
+
+                                subSubState.instance.Move(subPosition, subSubState.angle + deltaAngle);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+    /* Move It! sub-sub-building fix */
+
+    [HarmonyPatch(typeof(MoveableBuilding))]
+    [HarmonyPatch("GetState")]
+    class MB_GetState
+    {
+        protected static Building[] buildingBuffer = BuildingManager.instance.m_buildings.m_buffer;
+
+        public static InstanceState Postfix(InstanceState state, ref MoveableBuilding __instance)
+        {
+            List<InstanceState> subSubStates = new List<InstanceState>();
+            BuildingState buildingState = (BuildingState)state;
+
+            //Debug.Log($"GS0 - {buildingState.subStates}");
+            if (buildingState.subStates != null)
+            {
+                foreach (InstanceState subState in buildingState.subStates)
+                {
+                    //Debug.Log($"GS 2{subState}");
+                    if (subState != null)
+                    {
+                        if (subState is BuildingState subBuildingState)
+                        {
+                            //Debug.Log($"GS4");
+                            if (subBuildingState.instance != null && subBuildingState.instance.isValid)
+                            {
+                                BuildingState ss = (BuildingState)subState;
+                                MoveableBuilding subInstance = (MoveableBuilding)subBuildingState.instance;
+                                subSubStates.Clear();
+
+                                //Debug.Log($"GS5 - {subInstance.subInstances}");
+                                ushort parent = buildingBuffer[subInstance.id.Building].m_parentBuilding; // Hack to get around Move It's single layer check
+                                buildingBuffer[subInstance.id.Building].m_parentBuilding = 0;
+                                foreach (Instance subSubInstance in subInstance.subInstances)
+                                {
+                                    //Debug.Log($"GS6");
+                                    if (subSubInstance != null && subSubInstance.isValid)
+                                    {
+                                        //Debug.Log($"GS7 {subSubInstance}");
+                                        subSubStates.Add(subSubInstance.GetState());
+                                    }
+                                }
+                                buildingBuffer[subInstance.id.Building].m_parentBuilding = parent;
+
+                                if (subSubStates.Count > 0)
+                                {
+                                    ss.subStates = subSubStates.ToArray();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return state;
+        }
+    }
+
+
+    [HarmonyPatch(typeof(MoveableBuilding))]
+    [HarmonyPatch("SetState")]
+    class MB_SetState
+    {
+        protected static Building[] buildingBuffer = BuildingManager.instance.m_buildings.m_buffer;
+
+        public static void Postfix(InstanceState state, MoveableBuilding __instance)
+        {
+            if (!(state is BuildingState buildingState)) {
+                return;
+            }
+
+            //Debug.Log($"SS0 - {buildingState.subStates}");
+            if (buildingState.subStates != null)
+            {
+                //Debug.Log($"SS1");
+                foreach (InstanceState subState in buildingState.subStates)
+                {
+                    //Debug.Log($"SS2 {subState}");
+                    if (subState != null)
+                    {
+                        if (subState is BuildingState subBuildingState)
+                        {
+                            //Debug.Log($"SS4");
+                            if (subBuildingState.instance != null && subBuildingState.instance.isValid)
+                            {
+                                BuildingState ss = (BuildingState)subState;
+                                MoveableBuilding subInstance = (MoveableBuilding)subBuildingState.instance;
+                                //Debug.Log($"SS5 - {subInstance.subInstances}");
+                                if (ss.subStates != null)
+                                {
+                                    foreach (InstanceState subSubState in ss.subStates)
+                                    {
+                                        //Debug.Log($"SS6");
+                                        if (subSubState != null)
+                                        {
+                                            //Debug.Log($"SS7 {subSubState}");
+                                            subSubState.instance.SetState(subSubState);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
