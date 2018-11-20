@@ -13,10 +13,10 @@ namespace CSL_ARMI
     {
         public static void Prefix(MoveItTool __instance)
         {
-            if (__instance.toolState == MoveItTool.ToolState.AligningHeights && Mod.active)
+            if (__instance.toolState == MoveItTool.ToolState.AligningHeights && Mod.mode != Mod.Mode.Off)
             {
-                Mod.active = false;
-                //Debug.Log($"Deactiviting (switched tool)");
+                // User switched tool
+                Mod.mode = Mod.Mode.Off;
             }
         }
     }
@@ -34,7 +34,7 @@ namespace CSL_ARMI
                 return true;
             }
 
-            if (Mod.active)
+            if (Mod.mode != Mod.Mode.Off)
             {
                 float angle;
 
@@ -65,14 +65,15 @@ namespace CSL_ARMI
                     return Mod.Deactivate();
                 }
 
-                // Add action to queue for Undo
+                // Add action to queue, also enables Undo/Redo
                 AlignRotationAction action = new AlignRotationAction();
-                action.angle = angle;
+                action.newAngle = angle;
+                action.followTerrain = MoveItTool.followTerrain;
                 ActionQueue.instance.Push(action);
                 ___m_nextAction = Mod.TOOL_ACTION_DO;
 
-                //Debug.Log($"ROTATION! Angle:{angle}, from {___m_hoverInstance}");
-                return Mod.Deactivate();
+                //Debug.Log($"Angle:{angle}, from {___m_hoverInstance}");
+                return Mod.Deactivate(false);
             }
 
             return true;

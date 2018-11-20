@@ -9,16 +9,40 @@ namespace CSL_ARMI
 {
     public class Mod : LoadingExtensionBase, IUserMod
     {
-        public const MoveItTool.ToolState TOOL_KEY = (MoveItTool.ToolState)6;
-        public const int TOOL_ACTION_DO = 1;
-
         public string Name => "Align Rotation for Move It";
         public string Description => "Press Alt+A in Move It and click on a building/prop/decal to align rotation";
-        public static bool active = false;
+
+        public enum Mode {Off, Each, All };
+        public const MoveItTool.ToolState TOOL_KEY = (MoveItTool.ToolState)6;
+        public const int TOOL_ACTION_DO = 1;
+        public static Mode mode = Mode.Off;
 
         private static readonly string harmonyId = "quboid.csl_mods.csl_armi";
         private static HarmonyInstance harmonyInstance;
         private static readonly object padlock = new object();
+
+
+        public override void OnLevelLoaded(LoadMode loadMode)
+        {
+            HarmonyInstance harmony = GetHarmonyInstance();
+            harmony.PatchAll(Assembly.GetExecutingAssembly());
+        }
+
+
+        public static bool Deactivate(bool switchMode = true)
+        {
+            if (switchMode)
+            {
+                mode = Mode.Off;
+            }
+            MoveItTool tool = (MoveItTool)ColossalFramework.Singleton<ToolController>.instance.CurrentTool;
+            tool.toolState = MoveItTool.ToolState.Default;
+            UIToolOptionPanel.RefreshAlignHeightButton();
+            Action.UpdateArea(Action.GetTotalBounds(false));
+            return false;
+        }
+
+
         public static HarmonyInstance GetHarmonyInstance()
         {
             lock (padlock)
@@ -30,23 +54,6 @@ namespace CSL_ARMI
 
                 return harmonyInstance;
             }
-        }
-
-        public override void OnLevelLoaded(LoadMode mode)
-        {
-            HarmonyInstance harmony = GetHarmonyInstance();
-            harmony.PatchAll(Assembly.GetExecutingAssembly());
-        }
-
-
-        public static bool Deactivate()
-        {
-            MoveItTool tool = (MoveItTool)ColossalFramework.Singleton<ToolController>.instance.CurrentTool;
-            tool.toolState = MoveItTool.ToolState.Default;
-            active = false;
-            UIToolOptionPanel.RefreshAlignHeightButton();
-            Action.UpdateArea(Action.GetTotalBounds(false));
-            return false;
         }
     }
 
@@ -67,23 +74,25 @@ namespace CSL_ARMI
                     _processed = true;
 
                     // Action
-                    if (tool.toolState == MoveItTool.ToolState.AligningHeights)
-                    {
-                        if (Mod.active)
-                        { // Switch Off
-                            Mod.active = false;
-                        }
-                        else
-                        { // Switch On
-                            Mod.active = true;
-                        }
+                    if (Mod.mode != Mod.Mode.Off)
+                    { // Switch Off
+                        Mod.Deactivate();
                     }
                     else
                     {
                         if (Action.selection.Count > 0)
                         {
-                            tool.StartAligningHeights();
-                            Mod.active = true;
+                            if (tool.toolState != MoveItTool.ToolState.AligningHeights)
+                            {
+                                tool.StartAligningHeights();
+                            }
+                            if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) {
+                                Mod.mode = Mod.Mode.All;
+                            }
+                            else
+                            {
+                                Mod.mode = Mod.Mode.Each;
+                            }
                         }
                     }
 
