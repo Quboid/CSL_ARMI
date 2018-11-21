@@ -61,12 +61,22 @@ namespace CSL_ARMI
                 }
                 else
                 {
-                    //Debug.Log($"Wrong hover asset type {___m_hoverInstance}<{___m_hoverInstance.GetType()}>");
+                    //Debug.Log($"Wrong hover asset type <{___m_hoverInstance.GetType()}>");
                     return Mod.Deactivate();
                 }
 
                 // Add action to queue, also enables Undo/Redo
-                AlignRotationAction action = new AlignRotationAction();
+                AlignRotationAction action;
+                switch (Mod.mode)
+                {
+                    case Mod.Mode.All:
+                        action = new AlignGroupRotationAction();
+                        break;
+
+                    default:
+                        action = new AlignEachRotationAction();
+                        break;
+                }
                 action.newAngle = angle;
                 action.followTerrain = MoveItTool.followTerrain;
                 ActionQueue.instance.Push(action);
@@ -90,22 +100,16 @@ namespace CSL_ARMI
             BuildingState state = instanceState as BuildingState;
             Vector3 newPosition = matrix4x.MultiplyPoint(state.position - center);
 
-            //Debug.Log($"MB Transform");
             if (state.subStates != null)
             {
-                //Debug.Log($"MB subState not null");
                 foreach (InstanceState subState in state.subStates)
                 {
-                    //Debug.Log($"MB subState");
                     if (subState is BuildingState bs)
                     {
-                        //Debug.Log($"MB subState is BuildingState");
                         if (bs.subStates != null)
                         {
-                            //Debug.Log($"MB subSubStates not null");
                             foreach (InstanceState subSubState in bs.subStates)
                             {
-                                //Debug.Log($"MB subSubState");
                                 Vector3 subPosition = subSubState.position - center;
                                 subPosition = matrix4x.MultiplyPoint(subPosition);
                                 subPosition.y = subSubState.position.y - state.position.y + newPosition.y;
@@ -133,32 +137,26 @@ namespace CSL_ARMI
             List<InstanceState> subSubStates = new List<InstanceState>();
             BuildingState buildingState = (BuildingState)state;
 
-            //Debug.Log($"GS0 - {buildingState.subStates}");
             if (buildingState.subStates != null)
             {
                 foreach (InstanceState subState in buildingState.subStates)
                 {
-                    //Debug.Log($"GS 2{subState}");
                     if (subState != null)
                     {
                         if (subState is BuildingState subBuildingState)
                         {
-                            //Debug.Log($"GS4");
                             if (subBuildingState.instance != null && subBuildingState.instance.isValid)
                             {
                                 BuildingState ss = (BuildingState)subState;
                                 MoveableBuilding subInstance = (MoveableBuilding)subBuildingState.instance;
                                 subSubStates.Clear();
 
-                                //Debug.Log($"GS5 - {subInstance.subInstances}");
                                 ushort parent = buildingBuffer[subInstance.id.Building].m_parentBuilding; // Hack to get around Move It's single layer check
                                 buildingBuffer[subInstance.id.Building].m_parentBuilding = 0;
                                 foreach (Instance subSubInstance in subInstance.subInstances)
                                 {
-                                    //Debug.Log($"GS6");
                                     if (subSubInstance != null && subSubInstance.isValid)
                                     {
-                                        //Debug.Log($"GS7 {subSubInstance}");
                                         subSubStates.Add(subSubInstance.GetState());
                                     }
                                 }
@@ -194,28 +192,22 @@ namespace CSL_ARMI
             //Debug.Log($"SS0 - {buildingState.subStates}");
             if (buildingState.subStates != null)
             {
-                //Debug.Log($"SS1");
                 foreach (InstanceState subState in buildingState.subStates)
                 {
-                    //Debug.Log($"SS2 {subState}");
                     if (subState != null)
                     {
                         if (subState is BuildingState subBuildingState)
                         {
-                            //Debug.Log($"SS4");
                             if (subBuildingState.instance != null && subBuildingState.instance.isValid)
                             {
                                 BuildingState ss = (BuildingState)subState;
                                 MoveableBuilding subInstance = (MoveableBuilding)subBuildingState.instance;
-                                //Debug.Log($"SS5 - {subInstance.subInstances}");
                                 if (ss.subStates != null)
                                 {
                                     foreach (InstanceState subSubState in ss.subStates)
                                     {
-                                        //Debug.Log($"SS6");
                                         if (subSubState != null)
                                         {
-                                            //Debug.Log($"SS7 {subSubState}");
                                             subSubState.instance.SetState(subSubState);
                                         }
                                     }

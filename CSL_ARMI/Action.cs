@@ -1,9 +1,22 @@
 ﻿using MoveIt;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace CSL_ARMI
 {
+    public class AlignEachRotationAction : AlignRotationAction
+    {
+    }
+
+    public class AlignGroupRotationAction : AlignRotationAction
+    {
+    }
+
+    public class AlignRandomRotationAction : AlignRotationAction
+    {
+    }
+
     public class AlignRotationAction : MoveIt.Action
     {
         public float newAngle;
@@ -21,6 +34,7 @@ namespace CSL_ARMI
                 }
             }
         }
+
 
         public static Bounds GetTotalBounds()
         {
@@ -54,6 +68,7 @@ namespace CSL_ARMI
             Matrix4x4 matrix = default(Matrix4x4);
             Bounds bounds = GetTotalBounds();
             float angleDelta, firstValidAngle = 0;
+            System.Random random = new System.Random();
 
             foreach (InstanceState state in savedStates)
             {
@@ -68,7 +83,7 @@ namespace CSL_ARMI
             }
             angleDelta = 0 - firstValidAngle + newAngle;
             PoR = bounds.center;
-            //Debug.Log($"Ready for all, mode is {Mod.mode} - delta:{angleDelta}, PoR:{PoR}, bounds Size:{bounds.size}");
+            //Debug.Log($"Ready, mode is {Mod.mode},{GetType()} - All delta:{angleDelta}, All PoR:{PoR}, bounds Size:{bounds.size}");
 
             foreach (InstanceState state in savedStates)
             {
@@ -87,12 +102,17 @@ namespace CSL_ARMI
                             mb.RemoveFixedHeightFlag(mb.id.Building);
                         }
 
-                        //float oldAngle = mb.angle;
-                        if (Mod.mode == Mod.Mode.Each)
+                        if (this is AlignEachRotationAction)
                         {
                             angleDelta = 0 - mb.angle + newAngle;
                             PoR = state.position;
-                            //Debug.Log($"Each ({Mod.mode}) - delta:{angleDelta}, PoR:{PoR}, bounds Size:{bounds.size}");
+                            //Debug.Log($"B:Each ({Mod.mode},{GetType()} - delta:{angleDelta}, PoR:{PoR}");
+                        }
+                        else if (this is AlignRandomRotationAction)
+                        {
+                            angleDelta = 0 - mb.angle + (float)(random.NextDouble() * Math.PI * 2);
+                            PoR = state.position;
+                            //Debug.Log($"B:Random ({Mod.mode},{GetType()}) - delta:{angleDelta}, PoR:{PoR}");
                         }
 
                         matrix.SetTRS(PoR, Quaternion.AngleAxis(angleDelta * Mathf.Rad2Deg, Vector3.down), Vector3.one);
@@ -113,21 +133,22 @@ namespace CSL_ARMI
                     }
                     else if (state.instance is MoveableProp mp)
                     {
-                        if (Mod.mode == Mod.Mode.Each)
+                        if (this is AlignEachRotationAction)
                         {
                             angleDelta = 0 - mp.angle + newAngle;
                             PoR = state.position;
-                            //Debug.Log($"Each ({Mod.mode}) - delta:{angleDelta}, PoR:{PoR}, bounds Size:{bounds.size}");
+                            //Debug.Log($"P:Each ({Mod.mode},{GetType()}) - delta:{angleDelta}, PoR:{PoR}, bounds Size:{bounds.size}");
+                        }
+                        else if (this is AlignRandomRotationAction)
+                        {
+                            angleDelta = 0 - mp.angle + (float)(random.NextDouble() * Math.PI * 2);
+                            PoR = state.position;
+                            //Debug.Log($"P:Random ({Mod.mode},{GetType()}) - delta:{angleDelta}, PoR:{PoR}");
                         }
                         matrix.SetTRS(PoR, Quaternion.AngleAxis(angleDelta * Mathf.Rad2Deg, Vector3.down), Vector3.one);
                         mp.Transform(state, ref matrix, 0f, angleDelta, PoR, followTerrain);
 
                         //state.instance.Move(state.instance.position, angle);
-                    }
-                    else
-                    {
-                        // Invalid Moveable Type
-                        //Debug.Log($"State:{state.prefabName}");
                     }
                 }
             }

@@ -12,7 +12,7 @@ namespace CSL_ARMI
         public string Name => "Align Rotation for Move It";
         public string Description => "Press Alt+A in Move It and click on a building/prop/decal to align rotation";
 
-        public enum Mode {Off, Each, All };
+        public enum Mode {Off, Each, All, Random };
         public const MoveItTool.ToolState TOOL_KEY = (MoveItTool.ToolState)6;
         public const int TOOL_ACTION_DO = 1;
         public static Mode mode = Mode.Off;
@@ -62,7 +62,6 @@ namespace CSL_ARMI
     {
         private bool _processed = false;
         private HashSet<InstanceState> m_states = new HashSet<InstanceState>();
-        //MoveItTool tool = ColossalFramework.Singleton<MoveItTool>.instance;
 
         public override void OnUpdate(float realTimeDelta, float simulationTimeDelta)
         {
@@ -80,7 +79,11 @@ namespace CSL_ARMI
                     }
                     else
                     {
-                        if (Action.selection.Count > 0)
+                        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)))
+                        { // Both Control and Shift are being held
+                            ;
+                        }
+                        else if (Action.selection.Count > 0)
                         {
                             if (tool.toolState != MoveItTool.ToolState.AligningHeights)
                             {
@@ -88,6 +91,17 @@ namespace CSL_ARMI
                             }
                             if (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) {
                                 Mod.mode = Mod.Mode.All;
+                            }
+                            else if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                            {
+                                Mod.mode = Mod.Mode.Random;
+
+                                // Perform action immediately
+                                AlignRotationAction action = new AlignRandomRotationAction();
+                                action.followTerrain = MoveItTool.followTerrain;
+                                ActionQueue.instance.Push(action);
+                                ActionQueue.instance.Do();
+                                Mod.Deactivate();
                             }
                             else
                             {
